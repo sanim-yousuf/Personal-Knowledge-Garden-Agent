@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Personal Knowledge Garden</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ["Space Grotesk", "Inter", "sans-serif"],
+            body: ["Inter", "system-ui", "sans-serif"]
+          },
+          colors: {
+            emerald: "#43d6a8",
+            teal: "#21b6c7"
+          },
+          boxShadow: {
+            glow: "0 24px 80px rgba(23, 197, 148, 0.18)"
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(67, 214, 168, 0.16), transparent 24%),
+        radial-gradient(circle at top right, rgba(33, 182, 199, 0.14), transparent 28%),
+        linear-gradient(180deg, #07110f 0%, #050908 100%);
+      color: #ecfff8;
+      font-family: Inter, system-ui, sans-serif;
+      overflow: hidden;
+    }
+    .glass {
+      background: rgba(11, 21, 18, 0.72);
+      border: 1px solid rgba(195, 255, 234, 0.08);
+      backdrop-filter: blur(20px);
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.26);
+    }
+    .nav-btn.active {
+      background: linear-gradient(135deg, rgba(67, 214, 168, 0.18), rgba(33, 182, 199, 0.18));
+      color: white;
+      border-color: rgba(195, 255, 234, 0.18);
+    }
+    .scrollbar-thin::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: rgba(184, 247, 223, 0.16);
+      border-radius: 999px;
+    }
+    select,
+    option,
+    optgroup {
+      background-color: #08110f !important;
+      color: #ecfff8 !important;
+    }
+    select {
+      color-scheme: dark;
+    }
+    .preview-backdrop {
+      background: rgba(3, 8, 7, 0.76);
+      backdrop-filter: blur(10px);
+    }
+    .app-shell {
+      position: relative;
+      isolation: isolate;
+    }
+    .app-shell::before {
+      content: "";
+      position: fixed;
+      top: -8rem;
+      left: -8rem;
+      width: 28rem;
+      height: 28rem;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(67, 214, 168, 0.18), transparent 68%);
+      filter: blur(20px);
+      pointer-events: none;
+      z-index: -1;
+    }
+    .app-shell::after {
+      content: "";
+      position: fixed;
+      right: -8rem;
+      bottom: -10rem;
+      width: 32rem;
+      height: 32rem;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(33, 182, 199, 0.14), transparent 70%);
+      filter: blur(28px);
+      pointer-events: none;
+      z-index: -1;
+    }
+    .glass-hover {
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+    }
+    .glass-hover:hover {
+      transform: translateY(-2px);
+      border-color: rgba(195, 255, 234, 0.16);
+      background: rgba(14, 26, 23, 0.82);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    }
+    button:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible,
+    select:focus-visible {
+      outline: 2px solid rgba(67, 214, 168, 0.55);
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body class="h-full overflow-hidden font-body">
+  <div class="app-shell mx-auto flex h-[100dvh] max-w-[1600px] gap-4 overflow-hidden p-4">
+    <aside class="glass flex h-full w-[320px] min-h-0 shrink-0 flex-col overflow-hidden rounded-[28px] p-4">
+      <div class="mb-3 rounded-[24px] border border-white/10 bg-white/5 p-3.5">
+        <p class="font-display text-xs uppercase tracking-[0.35em] text-emerald-200">🌿 Personal Knowledge Garden</p>
+        <h1 class="mt-2 font-display text-[2.2rem] font-semibold leading-[1.02]">Your Private, Lifelong Multimodal Second Brain</h1>
+        <p class="mt-2 text-[13px] leading-6 text-slate-300">Fast private indexing, code-aware retrieval, and persistent local sessions that stay on this machine.</p>
+      </div>
+
+      <div class="grid shrink-0 grid-cols-2 gap-3">
+        <div class="glass rounded-2xl p-3">
+          <p class="text-xs uppercase tracking-[0.18em] text-slate-400">Files</p>
+          <p id="statFiles" class="mt-2 text-2xl font-semibold">0</p>
+        </div>
+        <div class="glass rounded-2xl p-3">
+          <p class="text-xs uppercase tracking-[0.18em] text-slate-400">Chunks</p>
+          <p id="statChunks" class="mt-2 text-2xl font-semibold">0</p>
+        </div>
+      </div>
+
+      <div class="scrollbar-thin mt-4 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1">
+        <div class="glass-hover flex min-h-[260px] flex-1 flex-col overflow-hidden rounded-[24px] border border-white/10 bg-white/5 p-3">
+          <div class="flex shrink-0 items-center justify-between">
+            <p class="font-display text-sm uppercase tracking-[0.25em] text-slate-300">Chat Sessions</p>
+            <button id="newChatBtn" class="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-100">New</button>
+          </div>
+          <div class="mt-3 flex shrink-0 gap-2">
+            <input id="newChatName" class="w-full rounded-full border border-white/10 bg-black/20 px-3 py-2 text-sm outline-none" placeholder="Name a new session" />
+            <select id="newChatMode" class="rounded-full border border-white/10 bg-black/20 px-3 py-2 text-sm outline-none">
+              <option value="garden">Garden</option>
+              <option value="code">Code</option>
+              <option value="general">General</option>
+            </select>
+          </div>
+          <div id="sessionList" class="scrollbar-thin mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1"></div>
+        </div>
+
+        <div class="grid shrink-0 gap-2">
+          <button class="nav-btn active rounded-2xl border border-white/10 px-4 py-3 text-left text-sm text-slate-300 transition" data-view="chat">Garden Chat</button>
+          <button class="nav-btn rounded-2xl border border-white/10 px-4 py-3 text-left text-sm text-slate-300 transition" data-view="code">Code Garden</button>
+          <button class="nav-btn rounded-2xl border border-white/10 px-4 py-3 text-left text-sm text-slate-300 transition" data-view="search">Semantic Search</button>
+          <button class="nav-btn rounded-2xl border border-white/10 px-4 py-3 text-left text-sm text-slate-300 transition" data-view="settings">Settings</button>
+        </div>
+      </div>
+
+      <div class="mt-4 shrink-0 rounded-[24px] border border-white/10 bg-white/5 p-4">
+        <p class="text-xs uppercase tracking-[0.2em] text-slate-400">System Status</p>
+        <div class="mt-3 flex items-center gap-2">
+          <span id="statusDot" class="h-2.5 w-2.5 rounded-full bg-yellow-400"></span>
+          <span id="statusText" class="text-sm text-slate-300">Checking Ollama…</span>
+        </div>
+        <p id="statusModels" class="mt-3 text-xs text-slate-400">gemma3:4b • nomic-embed-text:latest</p>
+      </div>
+    </aside>
+
+    <main class="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
+      <section class="glass shrink-0 rounded-[30px] px-6 py-4">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p class="font-display text-xs uppercase tracking-[0.35em] text-emerald-200">Robust Local Indexing</p>
+            <h2 class="mt-1 font-display text-3xl font-semibold sm:text-[2.35rem]">Realtime knowledge, code, and image retrieval</h2>
+            <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-300">Continuously syncs your local garden, embeds every chunk with Ollama, preserves code structure, and makes new uploads queryable right away.</p>
+          </div>
+          <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <button id="syncBtn" class="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-4 py-2.5 text-sm font-semibold text-emerald-50 shadow-glow">Refresh Index</button>
+            <button id="exportGardenBtn" class="rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-100">Export Garden ZIP</button>
+            <button id="backupBtn" class="rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-slate-100">Create Backup</button>
+            <label class="cursor-pointer rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-center text-sm font-semibold text-slate-100">
+              Restore Backup
+              <input id="restoreInput" type="file" class="hidden" accept=".zip" />
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-chat" class="view grid min-h-0 flex-1 grid-cols-[minmax(0,1.5fr)_420px] gap-4 overflow-hidden">
+        <div class="glass flex h-full min-h-0 flex-col overflow-hidden rounded-[30px] p-5">
+          <div class="flex items-center justify-between gap-3 border-b border-white/10 pb-4">
+            <div>
+              <p class="font-display text-xs uppercase tracking-[0.35em] text-emerald-200">Chat Workspace</p>
+              <h3 id="activeChatTitle" class="mt-2 text-2xl font-semibold">No session selected</h3>
+            </div>
+            <select id="chatMode" class="rounded-full border border-white/10 bg-black/20 px-4 py-2 text-sm">
+              <option value="garden">Garden Chat</option>
+              <option value="code">Research & Learn from Code</option>
+              <option value="general">General Chat</option>
+            </select>
+          </div>
+          <div id="chatMessages" class="scrollbar-thin mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto pr-2 pb-4"></div>
+          <div class="sticky bottom-0 z-10 mt-4 shrink-0 border-t border-white/10 bg-[rgba(7,14,12,0.98)] pt-4 backdrop-blur-xl">
+            <textarea id="chatInput" rows="2" class="max-h-[240px] min-h-[64px] w-full resize-none overflow-y-auto rounded-[24px] border border-white/10 bg-black/20 px-4 py-3 text-sm leading-6 outline-none" placeholder="Ask your garden anything. Use General Chat for model-native knowledge or Code mode for code-centric questions."></textarea>
+            <div class="mt-3 flex items-center justify-between">
+              <p class="text-xs text-slate-400">Press Ctrl/Cmd + Enter to send quickly.</p>
+              <div class="flex gap-2">
+                <button id="renameChatBtn" class="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm">Rename</button>
+                <button id="exportChatBtn" class="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm">Export Chat</button>
+                <button id="deleteChatBtn" class="rounded-full border border-rose-400/20 bg-rose-400/10 px-4 py-2 text-sm text-rose-100">Delete</button>
+                <button id="sendBtn" class="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-5 py-2 text-sm font-semibold text-emerald-50">Send</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="scrollbar-thin min-h-0 space-y-4 overflow-y-auto pr-1">
+          <div class="glass glass-hover rounded-[30px] p-5">
+            <p class="font-display text-xs uppercase tracking-[0.35em] text-emerald-200">Ingest Documents & Images</p>
+            <div class="mt-4 space-y-3">
+              <input id="docUpload" type="file" multiple accept=".pdf,.txt,.md,.markdown,.rst,.json,.yaml,.yml,.csv,.jpg,.jpeg,.png,.webp,.bmp" class="block w-full text-sm text-slate-300" />
+              <textarea id="docDescription" class="min-h-[100px] w-full rounded-[24px] border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none" placeholder="Optional shared description for image uploads or contextual notes for this batch."></textarea>
+              <button id="uploadDocsBtn" class="w-full rounded-full border border-emerald-300/20 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-50">Upload to Garden</button>
+            </div>
+          </div>
+          <div class="glass glass-hover rounded-[30px] p-5">
+            <p class="font-display text-xs uppercase tracking-[0.35em] text-emerald-200">Related Content</p>
+            <div id="relatedContent" class="mt-4 space-y-3 text-sm text-slate-300"></div>
+          </div>
+          <div class="glass glass-hover rounded-[30px] p-5">
+            <p class="font-display text-xs uppercase tracking-[0.35em] text-emerald-200">Indexed Files</p>
+            <div id="fileListChat" class="scrollbar-thin mt-4 max-h-[260px] space-y-3 overflow-y-auto text-sm"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-code" class="view hidden grid-cols-[minmax(0,1.45fr)_420px] gap-4">
+        <div class="glass glass-hover rounded-[30px] p-5">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <p class="font-display text-xs uppercase tracking-[0.35em] text-emerald-200">Code Garden</p>
+              <h3 class="mt-2 text-2xl font-semibold">Research, learn, refactor, and compare versions</h3>
+            </div>
+            <div class="flex gap-2">
+              <select id="learnAction" class="rounded-full border border-white/10 bg-black/20 px-4 py-2 text-sm">
+                <option value="summary">Learn Mode: Summary</option>
+                <option value="documentation">Learn Mode: Documentation</option>
+                <option value="refactor">Learn Mode: Refactor</option>
+                <option value="explain">Learn Mode: Explain</option>
+              </select>
+              <button id="runLearnBtn" class="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-50">Run Learn Mode</button>
+            </div>
+          </div>
+          <div class="mt-4 grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
+            <div class="space-y-4">
+              <div class="rounded-[24px] border border-white/10 bg-white/5 p-4">
+                <p class="text-sm font-semibold">Upload Code</p>
+                <input id="codeUpload" type="file" multiple accept=".py,.js,.jsx,.ts,.tsx,.java,.c,.cpp,.cc,.cxx,.h,.hpp,.cs,.go,.rs,.php,.rb,.swift,.kt,.kts,.scala,.sh,.bash,.ps1,.sql,.html,.css,.scss,.sass,.xml" class="mt-3 block w-full text-sm text-slate-300" />
+                <textarea id="codeDescription" class="mt-3 min-h-[96px] w-full rounded-[22px] border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none" placeholder="Optional context: repo purpose, architecture notes, or what this code is for."></textarea>
+                <button id="uploadCodeBtn" class="mt-3 w-full rounded-full border border-emerald-300/20 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-50">Upload to Code Garden</button>
+              </div>
+              <div class="rounded-[24px] border border-white/10 bg-white/5 p-4">
+                <p class="text-sm font-semibold">Indexed Code Files</p>
+                <div id="codeFileList" class="scrollbar-thin mt-3 max-h-[420px] space-y-2 overflow-y-auto"></div>
+              </div>
+            </div>
+            <div class="rounded-[24px] border border-white/10 bg-white/5 p-4">
+              <div class="flex items-center justify-between gap-2">
+                <div>
+                  <p class="text-lg font-semibold">Learn Mode Output</p>
+                  <p class="text-xs text-slate-400">Use code-aware retrieval to explain structure, surface improvements, and answer architecture questions.</p>
+                </div>
+                <button id="loadVersionsBtn" class="rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs">Version History</button>
+              </div>
+              <textarea id="learnQuestion" class="mt-4 min-h-[100px] w-full rounded-[22px] border border-white/10 bg-black/20 px-4 py-3 text-sm outline-none" placeholder="Optional question: What does this code do, what are its risks, how would you refactor it, what functions matter most?"></textarea>
+              <div id="learnOutput" class="scrollbar-thin mt-4 max-h-[520px] overflow-y-auto rounded-[22px] border border-white/10 bg-black/20 p-4 text-sm leading-7 text-slate-200"></div>
+              <div id="versionPanel" class="mt-4 hidden rounded-[22px] border border-white/10 bg-black/20 p-4">
+                <p class="text-sm font-semibold">Version History & Diff</p>
+                <div id="versionList" class="mt-3 space-y-2"></div>
+                <pre id="diffOutput" class="scrollbar-thin mt-4 max-h-[300px] overflow-auto rounded-2xl border border-white/10 bg-black/30 p-4 text-xs text-emerald-100"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="space-y-4">
+          <div class="glass glass-hover rounded-[30px] p-5">
+            <p class="font-display text-xs uppercase tracking-[0.35em] text-emerald-200">Code Mode Shortcuts</p>
+            <ul class="mt-4 space-y-2 text-sm text-slate-300">
+              <li>Summarize architecture and important files.</li>
+              <li>Extract functions, classes, and likely responsibilities.</li>
+              <li>Suggest targeted refactors and risks.</li>
+              <li>Compare versions after re-uploading a code file.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-search" class="view hidden grid-cols-[minmax(0,1fr)_420px] gap-4">
+        <div class="glass glass-hover rounded-[30px] p-5">
+          <div class="flex flex-wrap items-center gap-3">
+            <input id="searchInput" class="flex-1 rounded-full border border-white/10 bg-black/20 px-5 py-3 text-sm outline-none" placeholder="Global semantic search across documents, images, and code" />
+            <select id="searchMode" class="rounded-full border border-white/10 bg-black/20 px-4 py-3 text-sm">
+              <option value="all">All Content</option>
+              <option value="documents">Documents</option>
+              <option value="images">Images</option>
+              <option value="code">Code</option>
+            </select>
+            <button id="searchBtn" class="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-5 py-3 text-sm font-semibold text-emerald-50">Search</button>
+          </div>
+          <div id="searchResults" class="mt-5 space-y-3"></div>
+        </div>
+        <div class="glass glass-hover rounded-[30px] p-5">
+          <p class="font-display text-xs uppercase tracking-[0.35em] text-emerald-200">Preview</p>
+          <div id="previewPane" class="scrollbar-thin mt-4 max-h-[620px] overflow-y-auto rounded-[24px] border border-white/10 bg-black/20 p-4 text-sm text-slate-200"></div>
+        </div>
+      </section>
+
+      <section id="view-settings" class="view hidden grid-cols-[minmax(0,1fr)_420px] gap-4">
+        <div class="glass glass-hover rounded-[30px] p-5">
+          <p class="font-display text-xs uppercase tracking-[0.35em] text-emerald-200">Settings & Maintenance</p>
+          <div class="mt-5 grid gap-4 md:grid-cols-2">
+            <label class="rounded-[24px] border border-white/10 bg-white/5 p-4"><span class="text-sm font-semibold">Show Related Content</span><input id="toggleRelated" type="checkbox" class="mt-4 h-5 w-5 rounded border-white/20 bg-black/30" /></label>
+            <label class="rounded-[24px] border border-white/10 bg-white/5 p-4"><span class="text-sm font-semibold">Auto Tagging</span><input id="toggleTagging" type="checkbox" class="mt-4 h-5 w-5 rounded border-white/20 bg-black/30" /></label>
+            <label class="rounded-[24px] border border-white/10 bg-white/5 p-4"><span class="text-sm font-semibold">Code-aware Indexing</span><input id="toggleCodeAware" type="checkbox" class="mt-4 h-5 w-5 rounded border-white/20 bg-black/30" /></label>
+            <label class="rounded-[24px] border border-white/10 bg-white/5 p-4"><span class="text-sm font-semibold">Default to General Chat</span><input id="toggleGeneralDefault" type="checkbox" class="mt-4 h-5 w-5 rounded border-white/20 bg-black/30" /></label>
+          </div>
+          <div class="mt-5 flex flex-wrap gap-3">
+            <button id="saveSettingsBtn" class="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-5 py-3 text-sm font-semibold text-emerald-50">Save Settings</button>
+            <button id="rebuildBtn" class="rounded-full border border-amber-300/20 bg-amber-400/10 px-5 py-3 text-sm font-semibold text-amber-50">Clear Cache & Rebuild</button>
+            <button id="exportGardenBtnSettings" class="rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-100">Export Garden ZIP</button>
+            <button id="backupBtnSettings" class="rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-100">Create Backup</button>
+            <label class="rounded-full border border-white/10 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-slate-100 cursor-pointer">
+              Restore Backup
+              <input id="restoreInputSettings" type="file" class="hidden" accept=".zip" />
+            </label>
+          </div>
+          <pre id="settingsOutput" class="scrollbar-thin mt-5 max-h-[400px] overflow-auto rounded-[24px] border border-white/10 bg-black/20 p-4 text-xs text-slate-300"></pre>
+        </div>
+        <div class="glass glass-hover rounded-[30px] p-5">
+          <p class="font-display text-xs uppercase tracking-[0.35em] text-emerald-200">Index Statistics</p>
+          <div id="settingsStats" class="mt-4 space-y-3 text-sm text-slate-300"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div id="toast" class="pointer-events-none fixed bottom-4 right-4 hidden rounded-full border border-white/10 bg-black/75 px-5 py-3 text-sm text-slate-100 shadow-glow"></div>
+  <div id="previewModal" class="preview-backdrop fixed inset-0 z-50 hidden items-center justify-center p-4">
+    <div class="glass flex max-h-[92vh] w-full max-w-5xl flex-col rounded-[30px]">
+      <div class="flex items-center justify-between border-b border-white/10 px-5 py-4">
+        <div>
+          <p class="text-xs uppercase tracking-[0.3em] text-emerald-200">Preview</p>
+          <h3 id="previewModalTitle" class="mt-1 text-lg font-semibold">File Preview</h3>
+        </div>
+        <button id="closePreviewModalBtn" class="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm">Close</button>
+      </div>
+      <div id="previewModalBody" class="scrollbar-thin overflow-auto px-5 py-5"></div>
+    </div>
+  </div>
+  <script>
+    const state = {
+      activeView: "chat",
+      activeSessionId: null,
+      sessions: [],
+      files: [],
+      health: null,
+      selectedCodePath: "",
+      selectedPreviewPath: ""
+    };
+
+    const $ = (selector) => document.querySelector(selector);
+    const $$ = (selector) => [...document.querySelectorAll(selector)];
+
+    async function api(path, options = {}) {
+      const response = await fetch(path, options);
+      if (!response.ok) {
+        let detail = response.statusText;
+        try {
+          const payload = await response.json();
+          detail = payload.detail || JSON.stringify(payload);
+        } catch (_) {}
+        throw new Error(detail);
+      }
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) return response.json();
+      return response.blob();
+    }
+
+    function toast(message, isError = false) {
+      const node = $("#toast");
+      node.textContent = message;
+      node.classList.remove("hidden");
+      node.style.borderColor = isError ? "rgba(251, 113, 133, 0.25)" : "rgba(195,255,234,.1)";
+      node.style.background = isError ? "rgba(84, 18, 34, .9)" : "rgba(0,0,0,.75)";
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => node.classList.add("hidden"), 2600);
+    }
+
+    function setLoading(label) {
+      $("#statusText").textContent = label;
+      $("#statusDot").className = "h-2.5 w-2.5 rounded-full bg-yellow-400";
+    }
+
+    function setReadyStatus() {
+      const running = state.health?.running;
+      const missing = state.health?.missing_models || [];
+      if (!running) {
+        $("#statusText").textContent = state.health?.message || "Ollama offline";
+        $("#statusDot").className = "h-2.5 w-2.5 rounded-full bg-rose-400";
+        return;
+      }
+      if (missing.length) {
+        $("#statusText").textContent = `Missing models: ${missing.join(", ")}`;
+        $("#statusDot").className = "h-2.5 w-2.5 rounded-full bg-amber-400";
+        return;
+      }
+      $("#statusText").textContent = "Ollama ready and index healthy";
+      $("#statusDot").className = "h-2.5 w-2.5 rounded-full bg-emerald-400";
+    }
+
+    function formatBytes(bytes = 0) {
+      const units = ["B", "KB", "MB", "GB"];
+      let size = bytes;
+      let index = 0;
+      while (size >= 1024 && index < units.length - 1) {
+        size /= 1024;
+        index += 1;
+      }
+      return `${size.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+    }
+
+    function escapeHtml(text = "") {
+      return text
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+    }
+
+    function openPreviewModal(title, html) {
+      $("#previewModalTitle").textContent = title || "File Preview";
+      $("#previewModalBody").innerHTML = html;
+      $("#previewModal").classList.remove("hidden");
+      $("#previewModal").classList.add("flex");
+    }
+
+    function closePreviewModal() {
+      $("#previewModal").classList.add("hidden");
+      $("#previewModal").classList.remove("flex");
+    }
+
+    function switchView(view) {
+      state.activeView = view;
+      $$(".view").forEach((node) => node.classList.add("hidden"));
+      $(`#view-${view}`).classList.remove("hidden");
+      $$(".nav-btn").forEach((node) => node.classList.toggle("active", node.dataset.view === view));
+    }
+
+    function renderSessions() {
+      const container = $("#sessionList");
+      if (!state.sessions.length) {
+        container.innerHTML = `<div class="rounded-2xl border border-dashed border-white/10 p-4 text-sm text-slate-400">Create your first persistent chat session to start working across Garden, Code, or General mode.</div>`;
+        return;
+      }
+      container.innerHTML = state.sessions.map((session) => `
+        <button data-session="${session.id}" class="session-btn w-full rounded-2xl border ${session.id === state.activeSessionId ? "border-emerald-300/25 bg-emerald-400/10" : "border-white/10 bg-black/20"} p-3 text-left transition">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-medium">${session.name}</span>
+            <span class="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-slate-400">${session.mode}</span>
+          </div>
+          <p class="mt-2 text-xs text-slate-400">${session.message_count} messages</p>
+        </button>
+      `).join("");
+      $$(".session-btn").forEach((button) => button.addEventListener("click", () => loadChat(button.dataset.session)));
+    }
+
+    function renderFiles() {
+      $("#fileListChat").innerHTML = state.files.slice(0, 12).map(file => `
+        <div class="glass-hover rounded-2xl border border-white/10 bg-black/20 p-3">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <p class="font-medium">${file.name}</p>
+              <p class="text-xs text-slate-400">${file.category} • ${file.chunk_count} chunks • ${formatBytes(file.size)}</p>
+            </div>
+            <button class="preview-btn rounded-full border border-white/10 px-3 py-1 text-xs" data-path="${file.relative_path}">Preview</button>
+          </div>
+        </div>
+      `).join("");
+      $("#codeFileList").innerHTML = state.files.filter(file => file.category === "code").map(file => `
+        <button data-code-path="${file.relative_path}" class="code-file-btn w-full rounded-2xl border ${file.relative_path === state.selectedCodePath ? "border-emerald-300/25 bg-emerald-400/10" : "border-white/10 bg-black/20"} p-3 text-left">
+          <p class="font-medium">${file.name}</p>
+          <p class="mt-1 text-xs text-slate-400">${file.extra?.functions?.length || 0} functions • ${file.extra?.classes?.length || 0} classes</p>
+          <p class="mt-2 text-xs text-slate-500">${(file.tags || []).join(", ")}</p>
+        </button>
+      `).join("");
+      $$(".preview-btn").forEach(btn => btn.addEventListener("click", () => loadPreview(btn.dataset.path)));
+      $$(".code-file-btn").forEach(btn => btn.addEventListener("click", () => {
+        state.selectedCodePath = btn.dataset.codePath;
+        renderFiles();
+      }));
+    }
+
+    function renderStats() {
+      const stats = state.health?.stats || {};
+      $("#statFiles").textContent = stats.file_count || 0;
+      $("#statChunks").textContent = stats.chunk_count || 0;
+      $("#settingsStats").innerHTML = `
+        <div class="glass-hover rounded-2xl border border-white/10 bg-black/20 p-4">Files indexed: ${stats.file_count || 0}</div>
+        <div class="glass-hover rounded-2xl border border-white/10 bg-black/20 p-4">Chunks indexed: ${stats.chunk_count || 0}</div>
+        <div class="glass-hover rounded-2xl border border-white/10 bg-black/20 p-4">Storage footprint: ${formatBytes(stats.total_size || 0)}</div>
+        <div class="glass-hover rounded-2xl border border-white/10 bg-black/20 p-4">Documents: ${stats.category_counts?.document || 0} • Images: ${stats.category_counts?.image || 0} • Code: ${stats.category_counts?.code || 0}</div>
+        <div class="glass-hover rounded-2xl border border-white/10 bg-black/20 p-4">Last sync: ${stats.last_sync_at || "Never"}</div>
+      `;
+      $("#settingsOutput").textContent = JSON.stringify(state.health, null, 2);
+    }
+
+    function renderMessages(session) {
+      const container = $("#chatMessages");
+      $("#activeChatTitle").textContent = session?.name || "No session selected";
+      $("#chatMode").value = session?.mode || "garden";
+      if (!session?.messages?.length) {
+        container.innerHTML = `<div class="rounded-[24px] border border-dashed border-white/10 p-6 text-sm text-slate-400">Ask a question, search across the garden, or switch to Code or General mode. Every session persists locally and can be renamed, loaded, exported, or deleted.</div>`;
+        $("#relatedContent").innerHTML = `<div class="text-sm text-slate-400">Related content suggestions appear after assistant responses.</div>`;
+        return;
+      }
+
+      container.innerHTML = session.messages.map(msg => `
+        <div class="rounded-[24px] border ${msg.role === "assistant" ? "border-white/10 bg-black/20" : "border-emerald-300/20 bg-emerald-400/10"} p-4">
+          <div class="mb-2 flex items-center justify-between">
+            <span class="text-xs uppercase tracking-[0.25em] text-slate-400">${msg.role}</span>
+            <span class="text-[11px] text-slate-500">${msg.created_at ? new Date(msg.created_at).toLocaleString() : ""}</span>
+          </div>
+          <pre class="whitespace-pre-wrap text-sm leading-7">${escapeHtml(msg.content)}</pre>
+        </div>
+      `).join("");
+
+      const latestAssistant = [...session.messages].reverse().find(msg => msg.role === "assistant");
+      const related = latestAssistant?.related_content || [];
+      $("#relatedContent").innerHTML = related.length ? related.map(item => `
+        <div class="glass-hover rounded-2xl border border-white/10 bg-black/20 p-3">
+          <div class="flex items-center justify-between gap-2">
+            <p class="font-medium">${item.name}</p>
+            <span class="text-xs text-emerald-200">${item.score}</span>
+          </div>
+          <p class="mt-1 text-xs text-slate-400">${item.category} • ${(item.tags || []).join(", ")}</p>
+          <p class="mt-2 text-xs text-slate-300">${escapeHtml(item.snippet)}</p>
+        </div>
+      `).join("") : `<div class="text-sm text-slate-400">Related content suggestions appear after assistant responses.</div>`;
+      container.scrollTop = container.scrollHeight;
+    }
+
+    async function refreshHealth() {
+      state.health = await api("/api/health");
+      setReadyStatus();
+      renderStats();
+      $("#toggleRelated").checked = !!state.health.settings.show_related_content;
+      $("#toggleTagging").checked = !!state.health.settings.auto_tagging;
+      $("#toggleCodeAware").checked = !!state.health.settings.code_aware_indexing;
+      $("#toggleGeneralDefault").checked = !!state.health.settings.general_chat_default;
+    }
+
+    async function refreshFiles() {
+      const payload = await api("/api/files");
+      state.files = payload.files || [];
+      renderFiles();
+    }
+
+    async function refreshSessions() {
+      const payload = await api("/api/chats");
+      state.sessions = payload.sessions || [];
+      renderSessions();
+      if (!state.activeSessionId && state.sessions.length) {
+        await loadChat(state.sessions[0].id);
+      }
+    }
+
+    async function loadChat(sessionId) {
+      const session = await api(`/api/chats/${sessionId}`);
+      state.activeSessionId = session.id;
+      renderSessions();
+      renderMessages(session);
+    }
+
+    async function createSession() {
+      const name = $("#newChatName").value.trim() || "New Session";
+      const mode = $("#newChatMode").value;
+      const session = await api("/api/chats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, mode })
+      });
+      $("#newChatName").value = "";
+      state.activeSessionId = session.id;
+      await refreshSessions();
+      toast("New session created");
+    }
+
+    async function sendMessage() {
+      if (!state.activeSessionId) {
+        toast("Create or select a chat session first", true);
+        return;
+      }
+      const message = $("#chatInput").value.trim();
+      if (!message) return;
+      const mode = $("#chatMode").value;
+      $("#chatInput").value = "";
+      autoResizeTextarea($("#chatInput"));
+      setLoading(`Thinking with ${mode} mode…`);
+      try {
+        await api(`/api/chats/${state.activeSessionId}/messages`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message, mode })
+        });
+        await loadChat(state.activeSessionId);
+        await refreshSessions();
+        setReadyStatus();
+      } catch (error) {
+        toast(error.message, true);
+        setReadyStatus();
+      }
+    }
+
+    async function uploadFiles(inputId, categoryHint, descriptionId) {
+      const input = $(inputId);
+      const files = [...input.files];
+      if (!files.length) {
+        toast("Choose one or more files to upload", true);
+        return;
+      }
+      setLoading("Uploading and indexing files…");
+      try {
+        for (const file of files) {
+          const form = new FormData();
+          form.append("file", file);
+          form.append("category_hint", categoryHint);
+          form.append("description", $(descriptionId).value || "");
+          form.append("overwrite", "true");
+          await api("/api/files/upload", { method: "POST", body: form });
+        }
+        input.value = "";
+        $(descriptionId).value = "";
+        await refreshFiles();
+        await refreshHealth();
+        toast("Upload complete and instantly indexed");
+        setReadyStatus();
+      } catch (error) {
+        toast(error.message, true);
+        setReadyStatus();
+      }
+    }
+
+    async function runSearch() {
+      const query = $("#searchInput").value.trim();
+      if (!query) return;
+      setLoading("Running semantic search…");
+      try {
+        const payload = await api("/api/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query,
+            mode: $("#searchMode").value,
+            top_k: 10
+          })
+        });
+        $("#searchResults").innerHTML = (payload.results || []).map(item => `
+          <div class="rounded-[24px] border border-white/10 bg-black/20 p-4">
+            <div class="flex items-center justify-between gap-2">
+              <div>
+                <p class="font-semibold">${item.name}</p>
+                <p class="text-xs text-slate-400">${item.category} • score ${item.score}</p>
+              </div>
+              <button data-preview-search="${item.relative_path}" class="rounded-full border border-white/10 px-3 py-1 text-xs">Preview</button>
+            </div>
+            <p class="mt-3 text-sm text-slate-300">${escapeHtml(item.snippet)}</p>
+            <p class="mt-2 text-xs text-emerald-200">${(item.tags || []).join(", ")}</p>
+          </div>
+        `).join("") || `<div class="rounded-[24px] border border-dashed border-white/10 p-6 text-sm text-slate-400">No semantic results found.</div>`;
+        $$("[data-preview-search]").forEach(btn => btn.addEventListener("click", () => loadPreview(btn.dataset.previewSearch)));
+        setReadyStatus();
+      } catch (error) {
+        toast(error.message, true);
+        setReadyStatus();
+      }
+    }
+
+    async function loadPreview(relativePath) {
+      try {
+        state.selectedPreviewPath = relativePath;
+        const payload = await api(`/api/files/preview?relative_path=${encodeURIComponent(relativePath)}`);
+        let modalHtml = "";
+        if (payload.type === "image") {
+          modalHtml = `<img src="${payload.content}" class="w-full rounded-[24px]" alt="preview" />`;
+          $("#previewPane").innerHTML = modalHtml;
+        } else if (payload.type === "pdf") {
+          modalHtml = `<iframe src="${payload.content}" class="h-[75vh] w-full rounded-[24px] border border-white/10 bg-white" title="PDF preview"></iframe>`;
+          $("#previewPane").innerHTML = modalHtml;
+        } else {
+          modalHtml = `<pre class="whitespace-pre-wrap text-xs leading-6 text-slate-200">${escapeHtml(payload.content || "No preview available.")}</pre>`;
+          $("#previewPane").innerHTML = modalHtml;
+        }
+        openPreviewModal(relativePath, modalHtml);
+      } catch (error) {
+        toast(error.message, true);
+      }
+    }
+
+    async function runLearnMode() {
+      setLoading("Running code learn mode…");
+      try {
+        const payload = await api("/api/code/learn", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            relative_path: state.selectedCodePath,
+            action: $("#learnAction").value,
+            question: $("#learnQuestion").value.trim()
+          })
+        });
+        $("#learnOutput").innerHTML = `<pre class="whitespace-pre-wrap text-sm leading-7">${escapeHtml(payload.content || "")}</pre>`;
+        setReadyStatus();
+      } catch (error) {
+        toast(error.message, true);
+        setReadyStatus();
+      }
+    }
+
+    async function loadVersions() {
+      if (!state.selectedCodePath) {
+        toast("Select a code file first", true);
+        return;
+      }
+      try {
+        const payload = await api(`/api/code/versions?relative_path=${encodeURIComponent(state.selectedCodePath)}`);
+        const versions = payload.versions || [];
+        $("#versionPanel").classList.remove("hidden");
+        $("#versionList").innerHTML = versions.length ? versions.map(version => `
+          <button data-archived="${version.archived_path}" class="version-btn w-full rounded-2xl border border-white/10 bg-white/5 p-3 text-left">
+            <p class="font-medium">${version.archived_path.split("/").pop()}</p>
+            <p class="text-xs text-slate-400">${version.archived_at}</p>
+          </button>
+        `).join("") : `<div class="text-sm text-slate-400">No archived versions yet. Re-upload a changed code file with the same name to start version history.</div>`;
+        $$(".version-btn").forEach(btn => btn.addEventListener("click", async () => {
+          const diff = await api(`/api/code/diff?relative_path=${encodeURIComponent(state.selectedCodePath)}&archived_relative_path=${encodeURIComponent(btn.dataset.archived)}`);
+          $("#diffOutput").textContent = diff.diff || "No textual diff available.";
+        }));
+      } catch (error) {
+        toast(error.message, true);
+      }
+    }
+
+    async function renameActiveChat() {
+      if (!state.activeSessionId) return;
+      const nextName = prompt("Rename this chat session:");
+      if (!nextName) return;
+      await api(`/api/chats/${state.activeSessionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: nextName })
+      });
+      await refreshSessions();
+      await loadChat(state.activeSessionId);
+      toast("Chat renamed");
+    }
+
+    async function deleteActiveChat() {
+      if (!state.activeSessionId) return;
+      if (!confirm("Delete this chat session permanently?")) return;
+      await api(`/api/chats/${state.activeSessionId}`, { method: "DELETE" });
+      state.activeSessionId = null;
+      await refreshSessions();
+      $("#chatMessages").innerHTML = "";
+      toast("Chat deleted");
+    }
+
+    async function exportChat() {
+      if (!state.activeSessionId) return;
+      const blob = await api(`/api/chats/${state.activeSessionId}/export`);
+      downloadBlob(blob, `${state.activeSessionId}.md`);
+    }
+
+    async function exportGarden() {
+      const blob = await api("/api/export/garden");
+      downloadBlob(blob, "knowledge-garden.zip");
+    }
+
+    async function createBackup() {
+      const payload = await api("/api/backup", { method: "POST" });
+      toast(`Backup created: ${payload.backup_file}`);
+    }
+
+    async function restoreBackup(file) {
+      const form = new FormData();
+      form.append("file", file);
+      setLoading("Restoring backup…");
+      await api("/api/restore", { method: "POST", body: form });
+      await initialize();
+      toast("Backup restored");
+    }
+
+    async function saveSettings() {
+      const updates = {
+        show_related_content: $("#toggleRelated").checked,
+        auto_tagging: $("#toggleTagging").checked,
+        code_aware_indexing: $("#toggleCodeAware").checked,
+        general_chat_default: $("#toggleGeneralDefault").checked
+      };
+      await api("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updates })
+      });
+      await refreshHealth();
+      toast("Settings saved");
+    }
+
+    async function rebuildIndex() {
+      if (!confirm("Clear caches and rebuild the entire index?")) return;
+      setLoading("Rebuilding index…");
+      await api("/api/index/rebuild", { method: "POST" });
+      await initialize();
+      toast("Index rebuilt");
+    }
+
+    async function syncIndex() {
+      setLoading("Syncing local files…");
+      await api("/api/index/sync", { method: "POST" });
+      await initialize();
+      toast("Index refreshed");
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function autoResizeTextarea(textarea) {
+      if (!textarea) return;
+      textarea.style.height = "auto";
+      const nextHeight = Math.min(textarea.scrollHeight, 240);
+      textarea.style.height = `${Math.max(nextHeight, 64)}px`;
+      textarea.style.overflowY = textarea.scrollHeight > 240 ? "auto" : "hidden";
+    }
+
+    async function initialize() {
+      try {
+        setLoading("Loading garden…");
+        await refreshHealth();
+        await refreshFiles();
+        await refreshSessions();
+        setReadyStatus();
+      } catch (error) {
+        toast(error.message, true);
+        $("#statusText").textContent = error.message;
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      $$(".nav-btn").forEach(button => button.addEventListener("click", () => switchView(button.dataset.view)));
+      $("#newChatBtn").addEventListener("click", createSession);
+      $("#sendBtn").addEventListener("click", sendMessage);
+      $("#uploadDocsBtn").addEventListener("click", () => uploadFiles("#docUpload", "document", "#docDescription"));
+      $("#uploadCodeBtn").addEventListener("click", () => uploadFiles("#codeUpload", "code", "#codeDescription"));
+      $("#searchBtn").addEventListener("click", runSearch);
+      $("#runLearnBtn").addEventListener("click", runLearnMode);
+      $("#loadVersionsBtn").addEventListener("click", loadVersions);
+      $("#renameChatBtn").addEventListener("click", renameActiveChat);
+      $("#deleteChatBtn").addEventListener("click", deleteActiveChat);
+      $("#exportChatBtn").addEventListener("click", exportChat);
+      $("#exportGardenBtn").addEventListener("click", exportGarden);
+      $("#exportGardenBtnSettings").addEventListener("click", exportGarden);
+      $("#backupBtn").addEventListener("click", createBackup);
+      $("#backupBtnSettings").addEventListener("click", createBackup);
+      $("#saveSettingsBtn").addEventListener("click", saveSettings);
+      $("#rebuildBtn").addEventListener("click", rebuildIndex);
+      $("#syncBtn").addEventListener("click", syncIndex);
+      $("#restoreInput").addEventListener("change", async (event) => {
+        const file = event.target.files?.[0];
+        if (file) await restoreBackup(file);
+      });
+      $("#restoreInputSettings").addEventListener("change", async (event) => {
+        const file = event.target.files?.[0];
+        if (file) await restoreBackup(file);
+      });
+      $("#closePreviewModalBtn").addEventListener("click", closePreviewModal);
+      $("#previewModal").addEventListener("click", (event) => {
+        if (event.target.id === "previewModal") closePreviewModal();
+      });
+      autoResizeTextarea($("#chatInput"));
+      $("#chatInput").addEventListener("input", (event) => autoResizeTextarea(event.target));
+      $("#chatInput").addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+          sendMessage();
+        }
+      });
+      await initialize();
+    });
+  </script>
+</body>
+</html>
