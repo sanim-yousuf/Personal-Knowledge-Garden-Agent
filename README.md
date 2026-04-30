@@ -2,6 +2,9 @@
 
 Your Private, Lifelong Multimodal Second Brain.
 
+<img width="1919" height="1079" alt="Screenshot 2026-04-22 231141" src="https://github.com/user-attachments/assets/1af45ee8-cdb0-428c-9cb5-d5c9380d20a5" />
+
+
 ## What Changed
 
 This version replaces the earlier single-file prototype with a cleaner FastAPI backend and a lightweight frontend built from pure HTML, Tailwind CSS, and vanilla JavaScript.
